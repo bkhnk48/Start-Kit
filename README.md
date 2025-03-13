@@ -1,5 +1,16 @@
 # Start-Kit
 
+## Usage & Citation
+
+We're excited you're using the League of Robot Runners Start-Kit! If you find it valuable in your work, please acknowledge its contribution by citing the following publication:
+```
+@inproceedings{chan2024league,
+  title={The League of Robot Runners Competition: Goals, Designs, and Implementation},
+  author={Chan, Shao-Hung and Chen, Zhe and Guo, Teng and Zhang, Han and Zhang, Yue and Harabor, Daniel and Koenig, Sven and Wu, Cathy and Yu, Jingjin},
+  booktitle={ICAPS 2024 System's Demonstration track}
+}
+```
+
 ## Join the competition
 
 Log in to the [competition website](http://www.leagueofrobotrunners.org/) with a GitHub account, and we will automatically create a private GitHub submission repo for you.
