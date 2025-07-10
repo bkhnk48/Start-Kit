@@ -12,16 +12,19 @@ public:
     SharedEnvironment* env;
     MAPFPlanner* planner;
     TaskScheduler* scheduler;
+    int planCalledCnt;
 
 	Entry(SharedEnvironment* env): env(env)
     {
         planner = new MAPFPlanner(env);
+        planCalledCnt = 0;
     };
     Entry()
     {
         env = new SharedEnvironment();
         planner = new MAPFPlanner(env);
         scheduler = new TaskScheduler(env);
+        planCalledCnt = 0;
 
     };
 	virtual ~Entry(){delete env;};

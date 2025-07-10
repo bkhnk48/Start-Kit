@@ -4,6 +4,7 @@
 #include "pibt.h"
 #include "flow.h"
 #include "const.h"
+#include "tracy/Tracy.hpp"
 
 
 namespace DefaultPlanner{
@@ -80,7 +81,7 @@ namespace DefaultPlanner{
      * Note that the default planner ignores the turning action costs, and post-processes turning actions as additional delays on top of original plan.
      */
     void plan(int time_limit,vector<Action> & actions, SharedEnvironment* env){
-
+        // ZoneScoped;
         // calculate the time planner should stop optimsing traffic flows and return the plan.
         TimePoint start_time = std::chrono::steady_clock::now();
         //cap the time for distance to goal heuristic table initialisation to half of the given time_limit;
@@ -106,12 +107,17 @@ namespace DefaultPlanner{
         for(int i=0; i<env->num_of_agents; i++)
         {
             //initialise the shortest distance heuristic table for the goal location of the agent
+            size_t total = trajLNS.heuristics.capacity() * sizeof(HeuristicTable);
+            for (const auto& ht : trajLNS.heuristics) {
+                total += ht.htable.capacity() * sizeof(int);
+                total += ht.open.size() * sizeof(HNode);  // or use capacity() if you have it
+            }
             if ( ( std::chrono::steady_clock::now() < end_time) ){
                 for(int j=0; j<env->goal_locations[i].size(); j++)
                 {
                     int goal_loc = env->goal_locations[i][j].first;
                         if (trajLNS.heuristics.at(goal_loc).empty()){
-                            init_heuristic(trajLNS.heuristics[goal_loc],env,goal_loc);
+                            // init_heuristic(trajLNS.heuristics[goal_loc],env,goal_loc);
                             count++;
                         }
                 }
@@ -222,9 +228,10 @@ namespace DefaultPlanner{
             }
         }
 
-
-
         prev_states = next_states;
+        size_t memory_usage = trajLNS.memory_usage();
+        TracyPlot("TrajLNS Memory Usage in GB:", static_cast<double>(memory_usage) / (1024 * 1024 * 1024));
+        // std::cout << "TrajLNS Memory Usage in GB: " << static_cast<double>(memory_usage) / (1024 * 1024 * 1024) << std::endl;
         return;
 
     };

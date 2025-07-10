@@ -20,6 +20,8 @@ void Entry::initialize(int preprocess_time_limit)
 //NB: the parameter time_limit is specified in milliseconds.
 void Entry::compute(int time_limit, std::vector<Action> & plan, std::vector<int> & proposed_schedule)
 {
+    planCalledCnt++;
+    // std::cout<<"Entry::compute called " << planCalledCnt << " times." << std::endl;
     //call the task scheduler to assign tasks to agents
     scheduler->plan(time_limit,proposed_schedule);
 

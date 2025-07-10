@@ -7,6 +7,8 @@
 #include <signal.h>
 #include <climits>
 #include <memory>
+#define TRACY_ENABLE
+#include "tracy/Tracy.hpp"
 
 
 #ifdef PYTHON

@@ -9,7 +9,7 @@ std::unordered_set<int> free_tasks;
 void schedule_initialize(int preprocess_time_limit, SharedEnvironment* env)
 {
     // cout<<"schedule initialise limit" << preprocess_time_limit<<endl;
-    DefaultPlanner::init_heuristics(env);
+    // DefaultPlanner::init_heuristics(env);
     mt.seed(0);
     return;
 }

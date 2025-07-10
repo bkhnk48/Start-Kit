@@ -13,6 +13,18 @@ else()
 endif()
 
 
+# Tracy
+# IF (DEFINED TRACY_ENABLE)
+    # MESSAGE(STATUS "Tracy profiler: ${TRACY_ENABLE}")
+    # IF (${TRACY_ENABLE} STREQUAL "ON")
+        ADD_DEFINITIONS(-DTRACY_ENABLE)
+        INCLUDE("${PROJECT_SOURCE_DIR}/cmake/BuildTracy.cmake")
+        OPTION ( TRACY_ENABLE "" ON )
+        OPTION ( TRACY_ON_DEMAND "" ON )
+        ADD_SUBDIRECTORY (tracy)
+        # LIST(APPEND ALL_LIBRARIES Tracy::TracyClient)
+#     ENDIF ()
+# ENDIF()
 # Print the value of PYTHON
 message(STATUS "PYTHON: ${PYTHON}")
 
@@ -30,6 +42,7 @@ include_directories("default_planner")
 
 file(GLOB SOURCES "src/*.cpp" "default_planner/*.cpp")
 
+file(GLOB TEST "test/*.cpp")
 
 # Find Boost
 ADD_DEFINITIONS(-DBOOST_LOG_DYN_LINK)
@@ -72,9 +85,12 @@ ELSE()
     
 
     add_executable(lifelong ${SOURCES} )
-    target_link_libraries(lifelong ${Boost_LIBRARIES})
+    target_link_libraries(lifelong ${Boost_LIBRARIES} Tracy::TracyClient)
     target_compile_definitions(lifelong PRIVATE PYTHON=${PYTHON_FLAG})
+    add_executable(test ${TEST})
+    target_link_libraries(test PRIVATE ${Boost_LIBRARIES} Tracy::TracyClient)
 ENDIF()
+
 
 
 add_custom_target(clean_all
