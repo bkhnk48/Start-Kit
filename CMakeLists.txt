@@ -42,8 +42,6 @@ include_directories("default_planner")
 
 file(GLOB SOURCES "src/*.cpp" "default_planner/*.cpp")
 
-file(GLOB TEST "test/*.cpp")
-
 # Find Boost
 ADD_DEFINITIONS(-DBOOST_LOG_DYN_LINK)
 #SET(Boost_USE_STATIC_LIBS ON)
@@ -87,8 +85,6 @@ ELSE()
     add_executable(lifelong ${SOURCES} )
     target_link_libraries(lifelong ${Boost_LIBRARIES} Tracy::TracyClient)
     target_compile_definitions(lifelong PRIVATE PYTHON=${PYTHON_FLAG})
-    add_executable(test ${TEST})
-    target_link_libraries(test PRIVATE ${Boost_LIBRARIES} Tracy::TracyClient)
 ENDIF()
 
 
