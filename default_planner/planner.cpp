@@ -5,6 +5,8 @@
 #include "flow.h"
 #include "const.h"
 #include "tracy/Tracy.hpp"
+#include <deque>
+#include <numeric>
 
 
 namespace DefaultPlanner{
@@ -24,6 +26,9 @@ namespace DefaultPlanner{
     std::vector<int> dummy_goals;
     TrajLNS trajLNS;
     std::mt19937 mt1;
+    // history of recent PIBT runtimes in milliseconds (sliding window of last 10)
+    std::deque<int> pibt_time_history;
+    constexpr int PIBT_TIME_HISTORY_LEN = 10; // max number of samples to keep
 
     /**
      * @brief Default planner initialization
@@ -84,10 +89,25 @@ namespace DefaultPlanner{
         // ZoneScoped;
         // calculate the time planner should stop optimsing traffic flows and return the plan.
         TimePoint start_time = std::chrono::steady_clock::now();
-        //cap the time for distance to goal heuristic table initialisation to half of the given time_limit;
-        int pibt_time = PIBT_RUNTIME_PER_100_AGENTS * env->num_of_agents/100;
-        //traffic flow assignment end time, leave PIBT_RUNTIME_PER_100_AGENTS ms per 100 agent and TRAFFIC_FLOW_ASSIGNMENT_END_TIME_TOLERANCE ms for computing pibt actions;
-        TimePoint end_time = start_time + std::chrono::milliseconds(time_limit - pibt_time - TRAFFIC_FLOW_ASSIGNMENT_END_TIME_TOLERANCE); 
+        // estimate PIBT time budget using running average of last PIBT runtimes (fallback to rule-of-thumb if no history)
+        int pibt_time;
+        if (!pibt_time_history.empty()){
+            long long sum = 0;
+            for (int t : pibt_time_history) sum += t;
+            pibt_time = static_cast<int>(sum / pibt_time_history.size());
+        }else{
+            // fallback heuristic based on number of agents (original behaviour)
+            pibt_time = PIBT_RUNTIME_PER_100_AGENTS * env->num_of_agents/100;
+        }
+        // leave TRAFFIC_FLOW_ASSIGNMENT_END_TIME_TOLERANCE ms for computing PIBT actions; ensure non-negative remaining time
+        int remaining_ms = time_limit - pibt_time - TRAFFIC_FLOW_ASSIGNMENT_END_TIME_TOLERANCE;
+        if (remaining_ms < 0){
+            // if average PIBT time exceeds available window, shrink PIBT budget proportionally but keep at least small positive flow optimisation window
+            // clamp PIBT time so that remaining_ms becomes a small slice (5%) if possible
+            pibt_time = PIBT_RUNTIME_PER_100_AGENTS * env->num_of_agents/100;
+            remaining_ms = std::max(0, time_limit - pibt_time - TRAFFIC_FLOW_ASSIGNMENT_END_TIME_TOLERANCE);
+        }
+        TimePoint end_time = start_time + std::chrono::milliseconds(remaining_ms);
 
         // recrod the initial location of each agent as dummy goals in case no goal is assigned to the agent.
         if (env->curr_timestep == 0){
@@ -117,7 +137,7 @@ namespace DefaultPlanner{
                 {
                     int goal_loc = env->goal_locations[i][j].first;
                         if (trajLNS.heuristics.at(goal_loc).empty()){
-                            // init_heuristic(trajLNS.heuristics[goal_loc],env,goal_loc);
+                            init_heuristic(trajLNS.heuristics[goal_loc],env,goal_loc);
                             count++;
                         }
                 }
@@ -136,7 +156,7 @@ namespace DefaultPlanner{
             // check if the agent need a guide path update, when the agent has no guide path or the guide path does not end at the goal location
             require_guide_path[i] = false;
             if (trajLNS.trajs[i].empty() || trajLNS.trajs[i].back() != trajLNS.tasks[i])
-                    require_guide_path[i] = true;
+                require_guide_path[i] = true;
             
             // check if the agent completed the action in the previous timestep
             // if not, the agent is till turning towards the action direction, we do not need to plan new action for the agent
@@ -171,7 +191,7 @@ namespace DefaultPlanner{
 
         // compute the congestion minimised guide path for the agents that need guide path update
         for (int i = 0; i < env->num_of_agents;i++){
-            if (std::chrono::steady_clock::now() >end_time)
+            if (std::chrono::steady_clock::now() > end_time)
                 break;
             if (require_guide_path[i]){
                 if (!trajLNS.trajs[i].empty())
@@ -181,6 +201,8 @@ namespace DefaultPlanner{
         }
 
         // iterate and recompute the guide path to optimise traffic flow
+        
+        TimePoint pibt_start_time = std::chrono::steady_clock::now();
         std::unordered_set<int> updated;
         frank_wolfe(trajLNS, updated,end_time);
 
@@ -227,6 +249,17 @@ namespace DefaultPlanner{
                 moveCheck(id,checked,decided,actions,prev_decision);
             }
         }
+        
+        TimePoint pibt_end_time = std::chrono::steady_clock::now();
+        std::chrono::duration<double> pibt_duration = pibt_end_time - pibt_start_time;
+        // record PIBT runtime in ms and maintain sliding window
+        int pibt_ms = (int) std::chrono::duration_cast<std::chrono::milliseconds>(pibt_end_time - pibt_start_time).count();
+        pibt_time_history.push_back(pibt_ms);
+        if (pibt_time_history.size() > PIBT_TIME_HISTORY_LEN) pibt_time_history.pop_front();
+        // (optional) print running average for debugging
+        long long dbg_sum = 0; for(int t: pibt_time_history) dbg_sum += t;
+        double avg_ms = (double)dbg_sum / pibt_time_history.size();
+        std::cout << "PIBT running average (" << pibt_time_history.size() << "/" << PIBT_TIME_HISTORY_LEN << ") = " << avg_ms << " ms" << std::endl;
 
         prev_states = next_states;
         size_t memory_usage = trajLNS.memory_usage();

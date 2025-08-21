@@ -59,7 +59,7 @@ void schedule_plan(int time_limit, std::vector<int> & proposed_schedule,  Shared
             // iterate over the locations (errands) of the task to compute the makespan to finish the task
             // makespan: the time for the agent to complete all the errands of the task t_id in order
             for (int loc : env->task_pool[t_id].locations){
-                dist += DefaultPlanner::get_h(env, c_loc, loc);
+                dist += DefaultPlanner::get_h(env, c_loc, loc, true);
                 c_loc = loc;
             }
 
@@ -83,6 +83,7 @@ void schedule_plan(int time_limit, std::vector<int> & proposed_schedule,  Shared
             it++;
         }
     }
+    cout << "Time Usage task planner: " <<  ((float)(clock() - start))/CLOCKS_PER_SEC <<endl;
     #ifndef NDEBUG
     cout << "Time Usage: " <<  ((float)(clock() - start))/CLOCKS_PER_SEC <<endl;
     cout << "new free agents: " << env->new_freeagents.size() << " new tasks: "<< env->new_tasks.size() <<  endl;

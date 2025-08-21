@@ -108,7 +108,7 @@ class TrajLNS{
         // Flow
         size_t flow_mem = flow.capacity() * sizeof(Int4);
         TracyPlot("TrajLNS:flow_mem_GB", static_cast<double>(flow_mem) / GB);
-        // std::cout << "TrajLNS:flow_mem_GB = " << (static_cast<double>(flow_mem) / GB) << std::endl;
+        std::cout << "TrajLNS:flow_mem_GB = " << (static_cast<double>(flow_mem) / GB) << std::endl;
         total += flow_mem;
         // Traj dists
         size_t traj_dists_mem = traj_dists.capacity() * sizeof(Dist2Path);
@@ -117,7 +117,7 @@ class TrajLNS{
             traj_dists_mem += dp.open.size() * sizeof(d2p);
         }
         TracyPlot("TrajLNS:traj_dists_mem_GB", static_cast<double>(traj_dists_mem) / GB);
-        // std::cout << "TrajLNS:traj_dists_mem_GB = " << (static_cast<double>(traj_dists_mem) / GB) << std::endl;
+        std::cout << "TrajLNS:traj_dists_mem_GB = " << (static_cast<double>(traj_dists_mem) / GB) << std::endl;
         total += traj_dists_mem;
         // Goal nodes
         size_t goal_nodes_mem = goal_nodes.capacity() * sizeof(s_node);
@@ -125,7 +125,7 @@ class TrajLNS{
             goal_nodes_mem += sizeof(int) * 9; // assuming each s_node has 9 int
         }
         TracyPlot("TrajLNS:goal_nodes_mem_GB", static_cast<double>(goal_nodes_mem) / GB);
-        // std::cout << "TrajLNS:goal_nodes_mem_GB = " << (static_cast<double>(goal_nodes_mem) / GB) << std::endl;
+        std::cout << "TrajLNS:goal_nodes_mem_GB = " << (static_cast<double>(goal_nodes_mem) / GB) << std::endl;
         total += goal_nodes_mem;
         // FW metrics
         size_t fw_metrics_mem = fw_metrics.capacity() * sizeof(FW_Metric);
@@ -133,7 +133,7 @@ class TrajLNS{
             fw_metrics_mem += sizeof(int) * 4; // assuming each FW_Metric has 4
         }
         TracyPlot("TrajLNS:fw_metrics_mem_GB", static_cast<double>(fw_metrics_mem) / GB);
-        // std::cout << "TrajLNS:fw_metrics_mem_GB = " << (static_cast<double>(fw_metrics_mem) / GB) << std::endl;
+        std::cout << "TrajLNS:fw_metrics_mem_GB = " << (static_cast<double>(fw_metrics_mem) / GB) << std::endl;
         total += fw_metrics_mem;
         // Trajs
         size_t trajs_mem = trajs.capacity() * sizeof(Traj);
@@ -141,11 +141,11 @@ class TrajLNS{
             trajs_mem += traj.capacity() * sizeof(int); // assuming each Traj is a vector of int
         }
         TracyPlot("TrajLNS:trajs_mem_GB", static_cast<double>(trajs_mem) / GB);
-        // std::cout << "TrajLNS:trajs_mem_GB = " << (static_cast<double>(trajs_mem) / GB) << std::endl;
+        std::cout << "TrajLNS:trajs_mem_GB = " << (static_cast<double>(trajs_mem) / GB) << std::endl;
         total += trajs_mem;
         // Total
         TracyPlot("TrajLNS:total_mem_GB", static_cast<double>(total) / GB);
-        // std::cout << "TrajLNS:total_mem_GB = " << (static_cast<double>(total) / GB) << std::endl;
+        std::cout << "TrajLNS:total_mem_GB = " << (static_cast<double>(total) / GB) << std::endl;
         return total;
     }
     

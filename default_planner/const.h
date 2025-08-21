@@ -21,7 +21,5 @@ namespace DefaultPlanner
     // The TaskScheduler will deduct this value from the time limit for default scheduler.
     const int SCHEDULER_TIMELIMIT_TOLERANCE = 10;
 
-
-
 }
 #endif

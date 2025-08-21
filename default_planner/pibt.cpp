@@ -13,12 +13,20 @@ int get_gp_h(TrajLNS& lns, int ai, int target){
     int min_heuristic;
 
     if (!lns.traj_dists.empty() && !lns.traj_dists[ai].empty())
+	{
         min_heuristic = get_dist_2_path(lns.traj_dists[ai], lns.env, target, &(lns.neighbors));	
+		std::cout<<"Using dist2path heuristic: "<<min_heuristic<<std::endl;
+	}
     else if (!lns.heuristics[lns.tasks.at(ai)].empty())
+	{
         min_heuristic = get_heuristic(lns.heuristics[lns.tasks.at(ai)], lns.env, target, &(lns.neighbors));
+		std::cout<<"Using heuristic table: "<<min_heuristic<<std::endl;
+	}
     else
+    {
         min_heuristic = manhattanDistance(target,lns.tasks.at(ai),lns.env);
-    
+		std::cout<<"Using Manhattan distance heuristic: "<<min_heuristic<<std::endl;
+    }
     return min_heuristic;
 }
 
@@ -159,8 +167,6 @@ Action getAction(State& prev, int next_loc, SharedEnvironment* env){
 		return Action::CR;
 	}
 	assert(false);
-
-
 
 }
 

@@ -90,17 +90,20 @@ int get_heuristic(HeuristicTable& ht, SharedEnvironment* env, int source, Neighb
 		return MAX_TIMESTEP;
 }
 
-int get_h(SharedEnvironment* env, int source, int target){
-	// if (global_heuristictable.empty()){
-	// 	init_heuristics(env);
-	// }
+int get_h(SharedEnvironment* env, int source, int target, bool useManhattan){
+	if (useManhattan)
+		return manhattanDistance(source, target, env);
+	else{
+		if (global_heuristictable.empty()){
+			init_heuristics(env);
+		}
 
-	// if (global_heuristictable.at(target).empty()){
-	// 	init_heuristic(global_heuristictable.at(target),env,target);
-	// }
+		if (global_heuristictable.at(target).empty()){
+			init_heuristic(global_heuristictable.at(target),env,target);
+		}
 
-	// return get_heuristic(global_heuristictable.at(target), env, source, &global_neighbors);
-	return manhattanDistance(source, target, env);
+		return get_heuristic(global_heuristictable.at(target), env, source, &global_neighbors);
+	}
 }
 
 
@@ -141,30 +144,20 @@ std::pair<int,int> get_source_2_path(Dist2Path& dp, SharedEnvironment* env, int 
 	{
 		d2p curr = dp.open.front();
 		dp.open.pop_front();
-
-
-
 		getNeighborLocs(ns,neighbors,curr.id);
-
 		for (int next_location : neighbors)
 		{
-
 			cost = curr.cost + 1;
-
 			auto it_next = dp.dist2path.find(next_location);
             if (it_next != dp.dist2path.end() && it_next->second.label == dp.label && cost >= it_next->second.cost)
                 continue;
-            
 			dp.open.emplace_back(dp.label,next_location,cost,curr.togo);
 			dp.dist2path.insert_or_assign(next_location, d2p(dp.label,next_location,cost,curr.togo));
-			
 		}
 		if (source == curr.id){
-			// std::cout<<curr.second.first<<" "<<curr.second.second<<std::endl;
 			return std::make_pair(curr.cost, curr.togo);
 		}
 	}
-
 	return std::make_pair(MAX_TIMESTEP,0);
 }
 
