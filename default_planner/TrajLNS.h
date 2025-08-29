@@ -15,7 +15,9 @@ namespace DefaultPlanner{
 // enum ADAPTIVE {RANDOM, CONGESTION, COUNT};
 enum ADAPTIVE {RANDOM, CONGESTION, DEVIATION, COUNT};
 
-extern std::vector<HeuristicTable> global_heuristictable;
+// extern std::vector<HeuristicTable> global_heuristictable;
+extern std::unordered_map<int, HeuristicTable> global_heuristictable;
+extern bool global_heuristics_initialized;
 extern Neighbors global_neighbors;
 
 struct FW_Metric{
@@ -62,7 +64,8 @@ class TrajLNS{
     std::vector<std::pair<int,int>> deviation_agents;
 
     std::vector<Int4> flow;
-    std::vector<HeuristicTable>& heuristics;
+    // std::vector<HeuristicTable>& heuristics;
+    std::unordered_map<int, HeuristicTable>& heuristics;
     std::vector<Dist2Path> traj_dists;
     std::vector<s_node> goal_nodes;// store the goal node of single agent search for each agent. contains all cost information.
 
@@ -80,7 +83,7 @@ class TrajLNS{
         mem.init(env->map.size());
     }
 
-    TrajLNS(SharedEnvironment* env, std::vector<HeuristicTable>& heuristics, Neighbors& neighbors):
+    TrajLNS(SharedEnvironment* env, std::unordered_map<int, HeuristicTable>& heuristics, Neighbors& neighbors):
         env(env),
         trajs(env->num_of_agents),
         tasks(env->num_of_agents),
@@ -95,19 +98,20 @@ class TrajLNS{
     size_t memory_usage(){
         // ZoneScoped;
         size_t total = 0;
-        const double GB = 1024.0 * 1024.0 * 1024.0;
+        // const double GB = 1024.0 * 1024.0 * 1024.0;
+        const double GB = 1000.0 * 1000.0 * 1000.0;
         // Heuristics
-        size_t heuristics_mem = heuristics.capacity() * sizeof(HeuristicTable);
-        for (const auto& ht : heuristics) {
-            heuristics_mem += ht.htable.capacity() * sizeof(int);
+        size_t heuristics_mem = heuristics.size() * sizeof(HeuristicTable);
+        for (const auto& [key, ht] : heuristics) {
+            heuristics_mem += 2 * ht.htable.size() * sizeof(int);
             heuristics_mem += ht.open.size() * sizeof(HNode);
         }
-        TracyPlot("TrajLNS:heuristics_mem_GB", static_cast<double>(heuristics_mem) / GB);
+        // TracyPlot("TrajLNS:heuristics_mem_GB", static_cast<double>(heuristics_mem) / GB);
         std::cout << "TrajLNS:heuristics_mem_GB = " << (static_cast<double>(heuristics_mem) / GB) << std::endl;
         total += heuristics_mem;
         // Flow
         size_t flow_mem = flow.capacity() * sizeof(Int4);
-        TracyPlot("TrajLNS:flow_mem_GB", static_cast<double>(flow_mem) / GB);
+        // TracyPlot("TrajLNS:flow_mem_GB", static_cast<double>(flow_mem) / GB);
         std::cout << "TrajLNS:flow_mem_GB = " << (static_cast<double>(flow_mem) / GB) << std::endl;
         total += flow_mem;
         // Traj dists
@@ -116,7 +120,7 @@ class TrajLNS{
             traj_dists_mem += dp.dist2path.size() * sizeof(d2p);
             traj_dists_mem += dp.open.size() * sizeof(d2p);
         }
-        TracyPlot("TrajLNS:traj_dists_mem_GB", static_cast<double>(traj_dists_mem) / GB);
+        // TracyPlot("TrajLNS:traj_dists_mem_GB", static_cast<double>(traj_dists_mem) / GB);
         std::cout << "TrajLNS:traj_dists_mem_GB = " << (static_cast<double>(traj_dists_mem) / GB) << std::endl;
         total += traj_dists_mem;
         // Goal nodes
@@ -124,7 +128,7 @@ class TrajLNS{
         for (const auto& node : goal_nodes) {
             goal_nodes_mem += sizeof(int) * 9; // assuming each s_node has 9 int
         }
-        TracyPlot("TrajLNS:goal_nodes_mem_GB", static_cast<double>(goal_nodes_mem) / GB);
+        // TracyPlot("TrajLNS:goal_nodes_mem_GB", static_cast<double>(goal_nodes_mem) / GB);
         std::cout << "TrajLNS:goal_nodes_mem_GB = " << (static_cast<double>(goal_nodes_mem) / GB) << std::endl;
         total += goal_nodes_mem;
         // FW metrics
@@ -132,7 +136,7 @@ class TrajLNS{
         for (auto& metric : fw_metrics) {
             fw_metrics_mem += sizeof(int) * 4; // assuming each FW_Metric has 4
         }
-        TracyPlot("TrajLNS:fw_metrics_mem_GB", static_cast<double>(fw_metrics_mem) / GB);
+        // TracyPlot("TrajLNS:fw_metrics_mem_GB", static_cast<double>(fw_metrics_mem) / GB);
         std::cout << "TrajLNS:fw_metrics_mem_GB = " << (static_cast<double>(fw_metrics_mem) / GB) << std::endl;
         total += fw_metrics_mem;
         // Trajs
@@ -140,11 +144,21 @@ class TrajLNS{
         for (auto& traj : trajs) {
             trajs_mem += traj.capacity() * sizeof(int); // assuming each Traj is a vector of int
         }
-        TracyPlot("TrajLNS:trajs_mem_GB", static_cast<double>(trajs_mem) / GB);
+        // TracyPlot("TrajLNS:trajs_mem_GB", static_cast<double>(trajs_mem) / GB);
         std::cout << "TrajLNS:trajs_mem_GB = " << (static_cast<double>(trajs_mem) / GB) << std::endl;
         total += trajs_mem;
+        // Deviation agents (vector of pairs<int,int>)
+        size_t deviation_agents_mem = deviation_agents.capacity() * sizeof(std::pair<int,int>);
+        // TracyPlot("TrajLNS:deviation_agents_mem_GB", static_cast<double>(deviation_agents_mem) / GB);
+        std::cout << "TrajLNS:deviation_agents_mem_GB = " << (static_cast<double>(deviation_agents_mem) / GB) << std::endl;
+        total += deviation_agents_mem;
+        // Internal memory pool (search nodes)
+        size_t mem_pool_mem = mem.bytes();
+        // TracyPlot("TrajLNS:mem_pool_mem_GB", static_cast<double>(mem_pool_mem) / GB);
+        std::cout << "TrajLNS:mem_pool_mem_GB = " << (static_cast<double>(mem_pool_mem) / GB) << std::endl;
+        total += mem_pool_mem;
         // Total
-        TracyPlot("TrajLNS:total_mem_GB", static_cast<double>(total) / GB);
+        // TracyPlot("TrajLNS:total_mem_GB", static_cast<double>(total) / GB);
         std::cout << "TrajLNS:total_mem_GB = " << (static_cast<double>(total) / GB) << std::endl;
         return total;
     }

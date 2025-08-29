@@ -7,6 +7,8 @@
 #include "tracy/Tracy.hpp"
 #include <deque>
 #include <numeric>
+#include <thread>
+#include <chrono>
 
 
 namespace DefaultPlanner{
@@ -68,6 +70,43 @@ namespace DefaultPlanner{
                 p[ids[i]] = ((double)(ids.size() - i))/((double)(ids.size()+1));
             }
             p_copy = p;
+
+            // Report memory usage of initialized structures
+            const double GB = 1024.0 * 1024.0 * 1024.0;
+            auto bytes_vec_bool = [](const std::vector<bool>& v){ return (v.capacity() + 7) / 8; };
+            size_t mem_p = p.capacity() * sizeof(double);
+            size_t mem_p_copy = p_copy.capacity() * sizeof(double);
+            size_t mem_decision = decision.capacity() * sizeof(int);
+            size_t mem_prev_states = prev_states.capacity() * sizeof(State);
+            size_t mem_next_states = next_states.capacity() * sizeof(State);
+            size_t mem_ids = ids.capacity() * sizeof(int);
+            size_t mem_occupied = bytes_vec_bool(occupied);
+            size_t mem_decided = decided.capacity() * sizeof(DCR);
+            size_t mem_checked = bytes_vec_bool(checked);
+            size_t mem_require_guide_path = bytes_vec_bool(require_guide_path);
+            size_t mem_dummy_goals = dummy_goals.capacity() * sizeof(int);
+            size_t mem_prev_decision = prev_decision.capacity() * sizeof(int);
+            // Include TrajLNS internal structures
+            size_t mem_trajLNS = trajLNS.memory_usage();
+            size_t total_mem = mem_p + mem_p_copy + mem_decision + mem_prev_states + mem_next_states +
+                               mem_ids + mem_occupied + mem_decided + mem_checked + mem_require_guide_path +
+                               mem_dummy_goals + mem_prev_decision + mem_trajLNS;
+            std::cout << "DefaultPlanner:init:p_mem_GB = " << (mem_p / GB) << std::endl;
+            std::cout << "DefaultPlanner:init:p_copy_mem_GB = " << (mem_p_copy / GB) << std::endl;
+            std::cout << "DefaultPlanner:init:decision_mem_GB = " << (mem_decision / GB) << std::endl;
+            std::cout << "DefaultPlanner:init:prev_states_mem_GB = " << (mem_prev_states / GB) << std::endl;
+            std::cout << "DefaultPlanner:init:next_states_mem_GB = " << (mem_next_states / GB) << std::endl;
+            std::cout << "DefaultPlanner:init:ids_mem_GB = " << (mem_ids / GB) << std::endl;
+            std::cout << "DefaultPlanner:init:occupied_mem_GB = " << (mem_occupied / GB) << std::endl;
+            std::cout << "DefaultPlanner:init:decided_mem_GB = " << (mem_decided / GB) << std::endl;
+            std::cout << "DefaultPlanner:init:checked_mem_GB = " << (mem_checked / GB) << std::endl;
+            std::cout << "DefaultPlanner:init:require_guide_path_mem_GB = " << (mem_require_guide_path / GB) << std::endl;
+            std::cout << "DefaultPlanner:init:dummy_goals_mem_GB = " << (mem_dummy_goals / GB) << std::endl;
+            std::cout << "DefaultPlanner:init:prev_decision_mem_GB = " << (mem_prev_decision / GB) << std::endl;
+            std::cout << "DefaultPlanner:init:trajLNS_mem_GB = " << (mem_trajLNS / GB) << std::endl;
+            std::cout << "DefaultPlanner:init:total_mem_GB = " << (total_mem / GB) << std::endl;
+            // Sleep 10s so the output can be read before proceeding
+            // std::this_thread::sleep_for(std::chrono::seconds(10));
             return;
     };
 
@@ -92,9 +131,9 @@ namespace DefaultPlanner{
         // estimate PIBT time budget using running average of last PIBT runtimes (fallback to rule-of-thumb if no history)
         int pibt_time;
         if (!pibt_time_history.empty()){
-            long long sum = 0;
-            for (int t : pibt_time_history) sum += t;
-            pibt_time = static_cast<int>(sum / pibt_time_history.size());
+            // take the max of the pibt_time
+            pibt_time = *std::max_element(pibt_time_history.begin(), pibt_time_history.end());
+            std::cout << "PIBT time from history: " << pibt_time << " ms" << std::endl;
         }else{
             // fallback heuristic based on number of agents (original behaviour)
             pibt_time = PIBT_RUNTIME_PER_100_AGENTS * env->num_of_agents/100;
@@ -106,6 +145,7 @@ namespace DefaultPlanner{
             // clamp PIBT time so that remaining_ms becomes a small slice (5%) if possible
             pibt_time = PIBT_RUNTIME_PER_100_AGENTS * env->num_of_agents/100;
             remaining_ms = std::max(0, time_limit - pibt_time - TRAFFIC_FLOW_ASSIGNMENT_END_TIME_TOLERANCE);
+            std::cout << "PIBT time clamped to: " << pibt_time << " ms" << std::endl;
         }
         TimePoint end_time = start_time + std::chrono::milliseconds(remaining_ms);
 
@@ -127,21 +167,16 @@ namespace DefaultPlanner{
         for(int i=0; i<env->num_of_agents; i++)
         {
             //initialise the shortest distance heuristic table for the goal location of the agent
-            size_t total = trajLNS.heuristics.capacity() * sizeof(HeuristicTable);
-            for (const auto& ht : trajLNS.heuristics) {
-                total += ht.htable.capacity() * sizeof(int);
-                total += ht.open.size() * sizeof(HNode);  // or use capacity() if you have it
-            }
-            if ( ( std::chrono::steady_clock::now() < end_time) ){
-                for(int j=0; j<env->goal_locations[i].size(); j++)
-                {
-                    int goal_loc = env->goal_locations[i][j].first;
-                        if (trajLNS.heuristics.at(goal_loc).empty()){
-                            init_heuristic(trajLNS.heuristics[goal_loc],env,goal_loc);
-                            count++;
-                        }
-                }
-            }
+            // if ( ( std::chrono::steady_clock::now() < end_time) ){
+            //     for(int j=0; j<env->goal_locations[i].size(); j++)
+            //     {
+            //         int goal_loc = env->goal_locations[i][j].first;
+            //         if (trajLNS.heuristics.find(goal_loc) == trajLNS.heuristics.end()){
+            //             // init_heuristic(trajLNS.heuristics[goal_loc],env,goal_loc);
+            //             count++;
+            //         }
+            //     }
+            // }
             
 
             // set the goal location of each agent
@@ -192,20 +227,24 @@ namespace DefaultPlanner{
         // compute the congestion minimised guide path for the agents that need guide path update
         for (int i = 0; i < env->num_of_agents;i++){
             if (std::chrono::steady_clock::now() > end_time)
+            {
+                std::cout << "Time limit reached during guide path computation" << i << "/" << env->num_of_agents << std::endl;
                 break;
+            }
             if (require_guide_path[i]){
                 if (!trajLNS.trajs[i].empty())
                     remove_traj(trajLNS, i);
                 update_traj(trajLNS, i);
             }
+            // size_t memory_usage = trajLNS.memory_usage();
         }
 
         // iterate and recompute the guide path to optimise traffic flow
-        
-        TimePoint pibt_start_time = std::chrono::steady_clock::now();
         std::unordered_set<int> updated;
         frank_wolfe(trajLNS, updated,end_time);
+        std::cout << "Frank-Wolfe finished, now PIBT" << std::endl;
 
+        TimePoint pibt_start_time = std::chrono::steady_clock::now();
         // sort agents based on the current priority
         std::sort(ids.begin(), ids.end(), [&](int a, int b) {
                 return p.at(a) > p.at(b);
@@ -213,6 +252,8 @@ namespace DefaultPlanner{
         );
 
         // compute the targeted next location for each agent using PIBT
+        int pibt_cnt = 0;
+        int ids_size = ids.size();
         for (int i : ids){
             if (decided[i].state == DONE::NOT_DONE){
                 continue;
@@ -222,9 +263,17 @@ namespace DefaultPlanner{
                 causalPIBT(i,-1,prev_states,next_states,
                     prev_decision,decision,
                     occupied, trajLNS);
+                std::cout << "PIBT finished for agent " << i << std::endl;
+                std::cout << "Progress: "
+                          << ++pibt_cnt << "/" << ids_size
+                          << " | dist2path=" << PIBT_CNT_get_dist_2_path
+                          << " | heuristic=" << PIBT_CNT_get_heuristic
+                          << " | manhattan=" << PIBT_CNT_manhattan
+                          << std::endl;
             }
         }
-        
+        std::cout << "PIBT finished for all agents" << std::endl;
+
         // post processing the targeted next location to turning or moving actions
         actions.resize(env->num_of_agents);
         for (int id : ids){

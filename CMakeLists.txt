@@ -35,6 +35,15 @@ IF(NOT CMAKE_BUILD_TYPE)
     #SET(CMAKE_BUILD_TYPE "MINSIZEREL")
 ENDIF()
 
+# Global debug-friendly flags
+if(CMAKE_BUILD_TYPE MATCHES "Debug|DEBUG")
+  add_compile_options(-g3 -O0 -fno-omit-frame-pointer -fno-optimize-sibling-calls)
+  add_link_options(-rdynamic) # better backtraces
+  if(ENABLE_LIBSTDCPP_ASSERTS)
+    add_compile_definitions(_GLIBCXX_ASSERTIONS)
+  endif()
+endif()
+
 include_directories("inc")
 
 # default planner

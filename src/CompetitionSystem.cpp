@@ -5,8 +5,39 @@
 #include "nlohmann/json.hpp"
 #include <functional>
 #include <Logger.h>
+#include <thread>
+#include <chrono>
 
 using json = nlohmann::ordered_json;
+size_t BaseSystem::memory_usage_bytes() const {
+    size_t total = 0;
+    // Grid map
+    total += map.map.capacity() * sizeof(int);
+    total += sizeof(Grid);
+    // Planner/Entry and SharedEnvironment basics
+    // env
+    if (env) {
+        total += sizeof(SharedEnvironment);
+        total += env->map.capacity() * sizeof(int);
+        total += env->goal_locations.capacity() * sizeof(std::vector<std::pair<int,int>>);
+        for (const auto& v : env->goal_locations) total += v.capacity() * sizeof(std::pair<int,int>);
+        total += env->curr_states.capacity() * sizeof(State);
+        total += env->new_tasks.capacity() * sizeof(int);
+        total += env->new_freeagents.capacity() * sizeof(int);
+        total += env->curr_task_schedule.capacity() * sizeof(int);
+        // task_pool unordered_map structural estimate (keys+values + buckets)
+        total += env->task_pool.size() * sizeof(std::pair<const int, Task>);
+        total += env->task_pool.bucket_count() * sizeof(void*);
+    }
+    // TaskManager containers
+    total += sizeof(TaskManager);
+    // Simulator rough size
+    total += sizeof(Simulator);
+    // Proposed vectors
+    total += proposed_actions.capacity() * sizeof(Action);
+    total += proposed_schedule.capacity() * sizeof(int);
+    return total;
+}
 
 
 
@@ -76,8 +107,21 @@ void BaseSystem::plan(int & timeout_timesteps)
     started = true;
 
     while (timestep + timeout_timesteps < simulation_time){
-
-        if (future.wait_for(std::chrono::milliseconds(plan_time_limit)) == std::future_status::ready)
+        if (timestep < 10) // do not timeout
+        {
+            while(true){
+                if (future.wait_for(std::chrono::milliseconds(100)) == std::future_status::ready)
+                {
+                    task_td.join();
+                    started = false;
+                    auto res = future.get();
+                    logger->log_info("planner returns while estimating PIBT time", timestep + timeout_timesteps);
+                    return;
+                }
+            }
+        }                
+        else{
+            if (future.wait_for(std::chrono::milliseconds(plan_time_limit)) == std::future_status::ready)
             {
                 task_td.join();
                 started = false;
@@ -86,8 +130,10 @@ void BaseSystem::plan(int & timeout_timesteps)
                 logger->log_info("planner returns", timestep + timeout_timesteps);
                 return;
             }
-        logger->log_info("planner timeout", timestep + timeout_timesteps);
-        timeout_timesteps += 1;
+            logger->log_info("planner timeout", timestep + timeout_timesteps);
+            timeout_timesteps += 1;
+        }
+
     }
 
     //
@@ -133,7 +179,15 @@ void BaseSystem::simulate(int simulation_time)
 {
     //init logger
     //Logger* log = new Logger();
+    
+    // Sleep 10 seconds before initialization
+    // std::cout << "Before sleep" << std::endl;
+    // std::this_thread::sleep_for(std::chrono::seconds(10));
+    // std::cout << "After sleep" << std::endl;
     initialize();
+    // std::cout << "Before sleep after initialize" << std::endl;
+    // std::this_thread::sleep_for(std::chrono::seconds(10));
+    // std::cout << "After sleep after initialize" << std::endl;
 
     this->simulation_time = simulation_time;
 

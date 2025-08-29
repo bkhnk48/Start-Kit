@@ -77,6 +77,9 @@ public:
     //void saveSimulationIssues(const string &fileName) const;
     void saveResults(const string &fileName, int screen) const;
 
+    // Approximate memory usage in bytes (container payloads and key fields)
+    size_t memory_usage_bytes() const;
+
 
 protected:
     Grid map;

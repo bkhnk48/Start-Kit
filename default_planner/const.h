@@ -6,7 +6,7 @@ namespace DefaultPlanner
     // pibt runtime (ms) per 100 agents. 
     // The default planner will use this value to determine how much time to allocate for PIBT action time.
     // The default planner compute the end time for traffic flow assignment by subtracting PIBT action time from the time limit.
-    const int PIBT_RUNTIME_PER_100_AGENTS = 1;
+    const int PIBT_RUNTIME_PER_100_AGENTS = 10;
 
     // Traffic flow assignment end time tolerance in ms.
     // The default planner will end the traffic flow assignment phase this many milliseconds before traffic flow assignment end time.

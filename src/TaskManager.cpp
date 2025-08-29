@@ -2,8 +2,30 @@
 #include "Tasks.h"
 #include "nlohmann/json.hpp"
 #include <vector>
+#include <iostream>
 
 using json = nlohmann::ordered_json;
+
+namespace {
+// Approximate bytes used by an unordered_map's structure (entries + buckets), not including pointed-to Task objects
+static size_t approx_unordered_map_bytes(const std::unordered_map<int, Task*>& m) {
+    using VT = typename std::unordered_map<int, Task*>::value_type; // pair<const int, Task*>
+    size_t entries = m.size() * sizeof(VT);
+    size_t buckets = m.bucket_count() * sizeof(void*);
+    return entries + buckets;
+}
+
+// Approximate bytes used by a std::list of pointers (node payload + prev/next pointers)
+static size_t approx_list_ptr_bytes(const std::list<Task*>& lst) {
+    // payload pointer + prev + next pointers per node
+    return lst.size() * (sizeof(Task*) + 2 * sizeof(void*));
+}
+
+// Bytes reserved by a vector<int>
+static size_t vector_int_reserved_bytes(const std::vector<int>& v) {
+    return v.capacity() * sizeof(int);
+}
+}
 
 /**
  * This function validates the proposed schedule (assignment) from participants
@@ -191,6 +213,15 @@ void TaskManager::reveal_tasks(int timestep)
         logger->log_info("Task " + std::to_string(task_id) + " is revealed");
         task_id++;
     }
+
+    // Memory usage accounting (approximate, container-only where applicable)
+    const double GB = 1024.0 * 1024.0 * 1024.0;
+    size_t ongoing_bytes = approx_unordered_map_bytes(ongoing_tasks);
+    size_t all_tasks_bytes = approx_list_ptr_bytes(all_tasks);
+    size_t new_tasks_bytes = vector_int_reserved_bytes(new_tasks);
+    std::cout << "TaskManager:ongoing_tasks_mem_GB = " << (ongoing_bytes / GB) << std::endl;
+    std::cout << "TaskManager:all_tasks_mem_GB = " << (all_tasks_bytes / GB) << std::endl;
+    std::cout << "TaskManager:new_tasks_mem_GB = " << (new_tasks_bytes / GB) << std::endl;
 }
 
 /**

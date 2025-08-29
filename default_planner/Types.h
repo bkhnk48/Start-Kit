@@ -77,7 +77,8 @@ namespace DefaultPlanner{
 		};
 
 	struct HeuristicTable{
-		std::vector<int> htable;
+		// std::vector<int> htable;
+		std::unordered_map<int, int> htable;
 		std::deque<HNode> open;
 		
 		bool empty(){
