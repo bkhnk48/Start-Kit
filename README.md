@@ -43,6 +43,9 @@ mkdir build
 cmake -B build ./ -DCMAKE_BUILD_TYPE=Release
 make -C build -j
 ```
+Chú ý, nếu máy cấu hình yếu thì tham số -j ở trên có thể khiến việc cài đặt bị crash, khi đó, có thể chấp nhận việc cài đặt bị chậm đi bằng cách bỏ đi tham số -j ở trên
+
+Nói cách khác lệnh make -C build -j sẽ thành make -C build
 
 ## Run the start kit
 
